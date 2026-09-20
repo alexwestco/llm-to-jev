@@ -42,7 +42,14 @@ function extractOptions(prompt) {
 function choiceQuestion(prompt, lowered) {
   if (!/classif|categor|label|choose|segment/.test(lowered)) return null
   const id = lowered.includes("segment") || lowered.includes("lead") ? "segment" : lowered.includes("label") || lowered.includes("comment") || lowered.includes("moderation") ? "label" : "category"
-  return { id, type: "choice", instructions: `Which ${id.replaceAll("_", " ")} best describes \`input\`?`, criteria: Object.fromEntries(extractOptions(prompt).map(option => [option, null])) }
+  const options = extractOptions(prompt)
+  return {
+    id,
+    type: "choice",
+    instructions: `Which ${id.replaceAll("_", " ")} best describes \`input\`?`,
+    criteria: Object.fromEntries(options.map(option => [option, null])),
+    needsOptions: options === DEFAULT_OPTIONS
+  }
 }
 
 function scoreQuestion(prompt, lowered) {
@@ -86,16 +93,19 @@ export function compile(prompt) {
   const lowered = cleanPrompt.toLowerCase()
   const questions = [choiceQuestion(cleanPrompt, lowered), scoreQuestion(cleanPrompt, lowered), noulQuestion(cleanPrompt)].filter(Boolean)
   const generationTasks = detectGenerationTasks(cleanPrompt)
-  const compatibility = questions.length ? generationTasks.length ? "partial" : "full" : "none"
+  const missingDetails = questions.filter(question => question.needsOptions).map(() => "Add concrete Choice options")
+  const compatibility = questions.length ? generationTasks.length || missingDetails.length ? "partial" : "full" : "none"
   const warnings = []
   if (!questions.length) warnings.push("No bounded Choice, Score, or Noul question was detected.")
   if (generationTasks.length) warnings.push(`${generationTasks.join(", ")} still requires a generative model.`)
+  if (missingDetails.length) warnings.push("Choice requires at least two concrete options; replace the generated placeholders.")
   if (questions.some(question => question.type === "score")) warnings.push("Review the generated Score rubric; Jev scores ordered criteria, not an arbitrary 0-to-1 range.")
   return {
     compatibility,
     suitability: questions.length >= 2 ? "strong" : questions.length ? "partial" : "not_a_fit",
     questions,
     generationTasks,
+    missingDetails,
     warnings
   }
 }
@@ -113,7 +123,7 @@ export function exportJavaScript(analysis) {
     else value = `noul(${quote(question.instructions)})`
     return `    ${quote(question.id)}: ${value}`
   }).join(",\n")
-  return `import { choice, noul, score, TypeSafeClient } from "@typesafe-ai/sdk";\n\nconst client = new TypeSafeClient();\nconst response = await client.systemOne({\n  state: { input: content },\n  questions: {\n${questions}\n  },\n});`
+  return `import { choice, noul, score, TypeSafeClient } from "@typesafe-ai/sdk";\n\nconst content = "REPLACE_WITH_CONTENT";\nconst client = new TypeSafeClient();\nconst response = await client.systemOne({\n  state: { input: content },\n  questions: {\n${questions}\n  },\n});`
 }
 
 function pythonLiteral(value) {
@@ -131,7 +141,7 @@ export function exportPython(analysis) {
     if (question.criteria) args.push(`criteria=${pythonLiteral(question.criteria)}`)
     return `            ${quote(question.id)}: ${className}(${args.join(", ")})`
   }).join(",\n")
-  return `from typesafe_sdk import Choice, Noul, Score, TypeSafeClient\n\nwith TypeSafeClient() as client:\n    response = client.system_one(\n        state={"input": content},\n        questions={\n${questions}\n        },\n    )`
+  return `from typesafe_sdk import Choice, Noul, Score, TypeSafeClient\n\ncontent = "REPLACE_WITH_CONTENT"\n\nwith TypeSafeClient() as client:\n    response = client.system_one(\n        state={"input": content},\n        questions={\n${questions}\n        },\n    )`
 }
 
 function apiQuestions(analysis) {
@@ -144,8 +154,8 @@ function apiQuestions(analysis) {
 
 export function exportRuby(analysis) {
   if (!analysis.questions.length) return "# Not convertible: no bounded Jev decision was detected.\n# Keep this task in a generative model."
-  const questions = JSON.stringify(apiQuestions(analysis), null, 2)
-  return `require "json"\nrequire "net/http"\n\nuri = URI("https://api.typesafe.ai/v1/systemone")\nrequest = Net::HTTP::Post.new(uri)\nrequest["Authorization"] = "Bearer #{ENV.fetch("TYPESAFE_API_KEY")}"\nrequest["Content-Type"] = "application/json"\nrequest.body = JSON.generate(\n  state: { input: content },\n  model: "jev-latest",\n  questions: ${questions}\n)\n\nresponse = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(request) }\nresult = JSON.parse(response.body)`
+  const questions = quote(JSON.stringify(apiQuestions(analysis)))
+  return `require "json"\nrequire "net/http"\n\ncontent = "REPLACE_WITH_CONTENT"\nquestions = JSON.parse(${questions})\nuri = URI("https://api.typesafe.ai/v1/systemone")\nrequest = Net::HTTP::Post.new(uri)\nrequest["Authorization"] = "Bearer #{ENV.fetch('TYPESAFE_API_KEY')}"\nrequest["Content-Type"] = "application/json"\nrequest.body = JSON.generate(\n  state: { input: content },\n  model: "jev-latest",\n  questions: questions\n)\n\nresponse = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(request) }\nresult = JSON.parse(response.body)`
 }
 
 export function exportGo(analysis) {
@@ -157,7 +167,14 @@ export function exportGo(analysis) {
 export function exportCurl(analysis) {
   if (!analysis.questions.length) return "# Not convertible: no bounded Jev decision was detected.\n# Keep this task in a generative model."
   const payload = JSON.stringify({ state: { input: "REPLACE_WITH_CONTENT" }, model: "jev-latest", questions: apiQuestions(analysis) }, null, 2)
-  return `curl -X POST https://api.typesafe.ai/v1/systemone \\\n+  -H "Authorization: Bearer $TYPESAFE_API_KEY" \\\n+  -H "Content-Type: application/json" \\\n+  --data-binary @- <<'JSON'\n${payload}\nJSON`
+  return [
+    "curl -X POST https://api.typesafe.ai/v1/systemone \\\\",
+    '  -H "Authorization: Bearer $TYPESAFE_API_KEY" \\\\',
+    '  -H "Content-Type: application/json" \\\\',
+    "  --data-binary @- <<'JSON'",
+    payload,
+    "JSON"
+  ].join("\\n")
 }
 
 export function exportAll(analysis) {

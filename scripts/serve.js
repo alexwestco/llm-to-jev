@@ -4,6 +4,7 @@ import { extname, resolve, sep } from "node:path"
 
 const root = process.cwd()
 const port = Number(process.env.PORT || 3002)
+const host = process.env.HOST || (process.env.DYNO ? "0.0.0.0" : "127.0.0.1")
 const contentTypes = { ".css": "text/css", ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml" }
 
 createServer((request, response) => {
@@ -23,4 +24,4 @@ createServer((request, response) => {
   } catch {
     response.writeHead(404).end("Not found")
   }
-}).listen(port, "127.0.0.1", () => console.log(`LLMtoJev running at http://localhost:${port}`))
+}).listen(port, host, () => console.log(`LLMtoJev running at http://${host}:${port}`))

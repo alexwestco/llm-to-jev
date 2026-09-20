@@ -4,7 +4,7 @@
 
 [Try the live demo](https://alexwestco.github.io/llm-to-jev/) · [Read the Jev docs](https://docs.typesafe.ai/) · [Contribute](CONTRIBUTING.md)
 
-LLMtoJev finds bounded decisions inside prompts written for GPT, Claude, or Gemini and exports equivalent Jev `Choice`, `Score`, and `Noul` questions. It is designed for classification, scoring, routing, and yes/no judgments that do not require generated prose.
+LLMtoJev finds bounded decisions inside prompts written for GPT, Claude, or Gemini and proposes Jev `Choice`, `Score`, and `Noul` questions. It is designed for classification, scoring, routing, and yes/no judgments that do not require generated prose.
 
 Each prompt is marked as fully convertible, partially convertible, or not convertible. For mixed prompts, the converter separates Jev-compatible decisions from writing, summarization, translation, and other generative work that must remain with an LLM.
 
@@ -56,6 +56,14 @@ Run the test suite:
 ```bash
 npm test
 ```
+
+Run an optional live smoke test against Jev with your own API key:
+
+```bash
+TYPESAFE_API_KEY=your_key npm run test:live
+```
+
+The key is read from the process environment and is never stored or printed.
 
 ## Project structure
 

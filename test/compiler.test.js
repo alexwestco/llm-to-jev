@@ -33,6 +33,13 @@ test("treats a single bounded decision as fully convertible", () => {
   assert.equal(result.compatibility, "full")
 })
 
+test("requires concrete options before calling a Choice fully convertible", () => {
+  const result = compile("Classify this customer message.")
+  assert.equal(result.compatibility, "partial")
+  assert.deepEqual(result.missingDetails, ["Add concrete Choice options"])
+  assert.match(result.warnings[0], /concrete options/)
+})
+
 test("exports official SDK-shaped examples", () => {
   const result = compile(prompt)
   assert.match(exportJavaScript(result), /@typesafe-ai\/sdk/)
@@ -51,10 +58,14 @@ test("does not export an empty API call for generative prompts", () => {
 test("exports HTTP examples for Ruby, Go, and cURL", () => {
   const result = compile(prompt)
   assert.match(exportRuby(result), /Net::HTTP/)
+  assert.match(exportRuby(result), /questions = JSON\.parse/)
+  assert.match(exportRuby(result), /questions: questions/)
+  assert.match(exportRuby(result), /ENV\.fetch\('TYPESAFE_API_KEY'\)/)
   assert.match(exportGo(result), /http\.NewRequest/)
   assert.doesNotMatch(exportGo(result), /\[\]byte\(`/)
   assert.match(exportCurl(result), /api\.typesafe\.ai\/v1\/systemone/)
   assert.match(exportCurl(result), /jev-latest/)
+  assert.doesNotMatch(exportCurl(result), /^\+/m)
 })
 
 test("extracts lead segments and purchase intent", () => {

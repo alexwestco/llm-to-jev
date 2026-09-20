@@ -26,7 +26,7 @@ function render() {
   const compatibilityLabels = { full: "Fully convertible", partial: "Partially convertible", none: "Not convertible" }
   const compatibilityReasons = {
     full: "Every detected task maps to a bounded Jev decision.",
-    partial: `${analysis.generationTasks.join(", ")} stays with an LLM.`,
+    partial: [...analysis.generationTasks.map(task => `${task} stays with an LLM`), ...analysis.missingDetails].join(". ") + ".",
     none: analysis.generationTasks.length ? `${analysis.generationTasks.join(", ")} requires an LLM.` : "No bounded Jev decision was detected."
   }
   const fitLabel = document.querySelector("#fitLabel")

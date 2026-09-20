@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/serve.js",
-    "test": "node --test"
+    "start": "node scripts/serve.js",
+    "test": "node --test",
+    "test:live": "node scripts/live-smoke.js"
   },
   "engines": {
     "node": ">=20"
