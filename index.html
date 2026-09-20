@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Convert decision-shaped LLM prompts into Jev primitives.">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <title>LLMtoJev</title>
+    <link rel="stylesheet" href="./src/style.css">
+    <script type="module" src="./src/app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="LLMtoJev home"><span class="brand-mark" aria-hidden="true">L2J</span><span>LLMtoJev</span></a>
+      <nav aria-label="Main navigation"><a href="https://docs.typesafe.ai/" target="_blank" rel="noreferrer">Jev docs <span aria-hidden="true">↗</span></a></nav>
+      <a class="github-link" href="https://github.com/alexwestco/llm-to-jev" aria-label="View on GitHub" target="_blank" rel="noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.59 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.21-3.37-1.21-.45-1.19-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .08 1.53 1.06 1.53 1.06.89 1.57 2.34 1.12 2.91.86.09-.67.35-1.12.64-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.69a9.3 9.3 0 0 1 2.5.34c1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.25C22 6.59 17.52 2 12 2Z"/></svg></a>
+    </header>
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy"><h1 id="hero-title">Convert LLM prompts<br class="desktop-break"> into <em>Jev primitives.</em></h1></div>
+        <div class="converter">
+          <div class="converter-bar"><span class="status"><i></i><span id="compileStatus">Ready</span></span><button class="example-button" id="exampleButton" type="button">Load example <span aria-hidden="true">↗</span></button></div>
+          <div class="editor-grid">
+            <section class="editor-pane input-pane" aria-labelledby="input-label">
+              <div class="pane-heading"><div><span class="step-number">01</span><h2 id="input-label">LLM prompt</h2></div><span class="model-pill">GPT / Claude / Gemini</span></div>
+              <textarea id="promptInput" maxlength="50000" spellcheck="false" aria-label="LLM prompt" placeholder="Classify this support ticket as billing, technical, account access, or other. Score its urgency from 0 to 1, and decide whether it needs human review. Return JSON."></textarea>
+              <div class="input-footer"><span id="charCount">Example prompt</span><button class="clear-button" id="clearButton" type="button">Clear</button></div>
+            </section>
+            <section class="editor-pane output-pane" aria-labelledby="output-label">
+              <div class="pane-heading"><div><span class="step-number">02</span><h2 id="output-label">Jev primitives</h2></div><div class="language-tabs" role="group" aria-label="Output language"><button class="language-tab active" data-language="javascript" type="button">JS</button><button class="language-tab" data-language="python" type="button">Python</button><button class="language-tab" data-language="json" type="button">JSON</button></div></div>
+              <div class="code-wrap"><pre id="codeOutput" aria-live="polite"></pre></div>
+              <div class="output-footer"><div class="fit-score"><span id="fitLabel">Strong fit</span><b id="primitiveCount">3 primitives found</b></div><button class="copy-button" id="copyButton" type="button" aria-label="Copy generated code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="1"/><path d="M16 8V5H5v11h3"/></svg><span>Copy code</span></button></div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer><a class="brand footer-brand" href="./"><span class="brand-mark">L2J</span><span>LLMtoJev</span></a><p>Made by <a href="https://x.com/alexwestco" target="_blank" rel="noreferrer">@alexwestco</a></p><p>Experimental tooling for Jev.</p></footer>
+  </body>
+</html>
