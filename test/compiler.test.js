@@ -1,11 +1,12 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { compile, exportJavaScript, exportPython } from "../src/compiler.js"
+import { compile, exportCurl, exportGo, exportJavaScript, exportPython, exportRuby } from "../src/compiler.js"
 
 const prompt = "Classify this support ticket as billing, technical, account access, or other. Score its urgency from 0 to 1, and decide whether it needs human review. Return JSON."
 
 test("extracts Choice, Score, and Noul questions", () => {
   const result = compile(prompt)
+  assert.equal(result.compatibility, "full")
   assert.equal(result.suitability, "strong")
   assert.deepEqual(result.questions.map(question => question.type), ["choice", "score", "noul"])
   assert.deepEqual(Object.keys(result.questions[0].criteria), ["billing", "technical", "account_access", "other"])
@@ -13,8 +14,23 @@ test("extracts Choice, Score, and Noul questions", () => {
 
 test("marks prose generation as not a fit", () => {
   const result = compile("Write a warm welcome email for our new customer.")
+  assert.equal(result.compatibility, "none")
   assert.equal(result.suitability, "not_a_fit")
   assert.equal(result.questions.length, 0)
+  assert.deepEqual(result.generationTasks, ["Writing new text"])
+})
+
+test("separates Jev decisions from generative work", () => {
+  const result = compile("Classify this support ticket as billing, technical, or other and write a friendly response.")
+  assert.equal(result.compatibility, "partial")
+  assert.equal(result.questions[0].type, "choice")
+  assert.deepEqual(Object.keys(result.questions[0].criteria), ["billing", "technical", "other"])
+  assert.deepEqual(result.generationTasks, ["Writing new text"])
+})
+
+test("treats a single bounded decision as fully convertible", () => {
+  const result = compile("Classify this request as sales or support.")
+  assert.equal(result.compatibility, "full")
 })
 
 test("exports official SDK-shaped examples", () => {
@@ -24,6 +40,21 @@ test("exports official SDK-shaped examples", () => {
   assert.match(exportJavaScript(result), /"category": choice/)
   assert.match(exportPython(result), /client\.system_one/)
   assert.match(exportPython(result), /Noul/)
+})
+
+test("does not export an empty API call for generative prompts", () => {
+  const result = compile("Summarize this report.")
+  assert.match(exportJavaScript(result), /Not convertible/)
+  assert.doesNotMatch(exportJavaScript(result), /systemOne/)
+})
+
+test("exports HTTP examples for Ruby, Go, and cURL", () => {
+  const result = compile(prompt)
+  assert.match(exportRuby(result), /Net::HTTP/)
+  assert.match(exportGo(result), /http\.NewRequest/)
+  assert.doesNotMatch(exportGo(result), /\[\]byte\(`/)
+  assert.match(exportCurl(result), /api\.typesafe\.ai\/v1\/systemone/)
+  assert.match(exportCurl(result), /jev-latest/)
 })
 
 test("extracts lead segments and purchase intent", () => {

@@ -20,8 +20,8 @@
     <main>
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy"><h1 id="hero-title">Convert LLM prompts<br class="desktop-break"> into <em>Jev primitives.</em></h1></div>
+        <div class="example-toolbar"><label for="exampleSelect">Example prompt</label><div class="example-menu"><select id="exampleSelect"><option value="" selected>Choose a scenario</option><optgroup label="Fully convertible"><option value="support">Support triage</option><option value="lead">Lead qualification</option><option value="moderation">Content moderation</option></optgroup><optgroup label="Partially convertible"><option value="routing_reply">Route + write reply</option><option value="review_summary">Review + summarize</option></optgroup><optgroup label="Not convertible"><option value="welcome_email">Write welcome email</option></optgroup></select></div></div>
         <div class="converter">
-          <div class="converter-bar"><span class="status"><i></i><span id="compileStatus">Ready</span></span><button class="example-button" id="exampleButton" type="button">Load example <span aria-hidden="true">↗</span></button></div>
           <div class="editor-grid">
             <section class="editor-pane input-pane" aria-labelledby="input-label">
               <div class="pane-heading"><div><span class="step-number">01</span><h2 id="input-label">LLM prompt</h2></div><span class="model-pill">GPT / Claude / Gemini</span></div>
@@ -29,9 +29,9 @@
               <div class="input-footer"><span id="charCount">Example prompt</span><button class="clear-button" id="clearButton" type="button">Clear</button></div>
             </section>
             <section class="editor-pane output-pane" aria-labelledby="output-label">
-              <div class="pane-heading"><div><span class="step-number">02</span><h2 id="output-label">Jev primitives</h2></div><div class="language-tabs" role="group" aria-label="Output language"><button class="language-tab active" data-language="javascript" type="button">JS</button><button class="language-tab" data-language="python" type="button">Python</button><button class="language-tab" data-language="json" type="button">JSON</button></div></div>
+              <div class="pane-heading"><div><span class="step-number">02</span><h2 id="output-label">Jev primitives</h2></div><div class="language-tabs" role="group" aria-label="Output language"><button class="language-tab active" data-language="javascript" type="button">JS</button><button class="language-tab" data-language="python" type="button">Python</button><button class="language-tab" data-language="ruby" type="button">Ruby</button><button class="language-tab" data-language="go" type="button">Go</button><button class="language-tab" data-language="curl" type="button">cURL</button><button class="language-tab" data-language="json" type="button">JSON</button></div></div>
               <div class="code-wrap"><pre id="codeOutput" aria-live="polite"></pre></div>
-              <div class="output-footer"><div class="fit-score"><span id="fitLabel">Strong fit</span><b id="primitiveCount">3 primitives found</b></div><button class="copy-button" id="copyButton" type="button" aria-label="Copy generated code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="1"/><path d="M16 8V5H5v11h3"/></svg><span>Copy code</span></button></div>
+              <div class="output-footer"><div class="fit-score"><div><span id="fitLabel">Fully convertible</span><b id="primitiveCount">3 primitives found</b></div><small id="compatibilityReason">Every detected task maps to a bounded Jev decision.</small></div><button class="copy-button" id="copyButton" type="button" aria-label="Copy generated code"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="1"/><path d="M16 8V5H5v11h3"/></svg><span>Copy code</span></button></div>
             </section>
           </div>
         </div>

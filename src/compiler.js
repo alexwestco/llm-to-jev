@@ -21,10 +21,19 @@ const NOUL_INSTRUCTIONS = {
   should_block: "Should `input` be blocked?"
 }
 
+const GENERATION_PATTERNS = [
+  { pattern: /\b(?:write|rewrite|draft|compose|respond(?:\s+to)?|reply(?:\s+to)?)\b/i, label: "Writing new text" },
+  { pattern: /\b(?:summari[sz]e|create a summary)\b/i, label: "Summarization" },
+  { pattern: /\b(?:generate|create)\s+(?:new\s+)?(?:text|copy|content|code|an?\s+(?:email|reply|response|message|article|post|story|report|plan|image))/i, label: "Content generation" },
+  { pattern: /\b(?:explain|describe)\s+(?:why|how|the|your|this|it)\b/i, label: "Open-ended explanation" },
+  { pattern: /\bbrainstorm\b|\bcome up with\b/i, label: "Brainstorming" },
+  { pattern: /\btranslate\b/i, label: "Translation" }
+]
+
 const normalizeId = value => value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
 
 function extractOptions(prompt) {
-  const match = prompt.match(/(?:\bas\b|segment:|label(?:\s+(?:it|this\s+\w+))?(?:\s+as)?|choose(?: one of)?(?: a)?(?: segment)?:)\s+(.+?)(?=\.\s*(?:Score|Rate|Decide|Determine|Return)|\.|$)/i)
+  const match = prompt.match(/(?:\bas\b|segment:|label(?:\s+(?:it|this\s+\w+))?(?:\s+as)?|choose(?: one of)?(?: a)?(?: segment)?:)\s+(.+?)(?=\.\s*(?:Score|Rate|Decide|Determine|Return)|\s+(?:and|then)\s+(?:write|rewrite|draft|compose|respond|reply|summari[sz]e|generate|create|explain|brainstorm|translate)\b|\.|$)/i)
   if (!match) return DEFAULT_OPTIONS
   const options = match[1].replace(/\b(?:and|or)\b/gi, ",").split(",").map(normalizeId).filter(Boolean)
   return options.length >= 2 && options.length <= 12 ? [...new Set(options)] : DEFAULT_OPTIONS
@@ -65,19 +74,36 @@ function noulQuestion(prompt) {
   return { id, type: "noul", instructions: NOUL_INSTRUCTIONS[id] || `Is it true that ${statement.replace(/\?$/, "")}?`, criteria: null }
 }
 
+function detectGenerationTasks(prompt) {
+  return GENERATION_PATTERNS
+    .filter(({ pattern }) => pattern.test(prompt))
+    .map(({ label }) => label)
+    .filter((label, index, labels) => labels.indexOf(label) === index)
+}
+
 export function compile(prompt) {
   const cleanPrompt = String(prompt).trim()
   const lowered = cleanPrompt.toLowerCase()
   const questions = [choiceQuestion(cleanPrompt, lowered), scoreQuestion(cleanPrompt, lowered), noulQuestion(cleanPrompt)].filter(Boolean)
+  const generationTasks = detectGenerationTasks(cleanPrompt)
+  const compatibility = questions.length ? generationTasks.length ? "partial" : "full" : "none"
   const warnings = []
   if (!questions.length) warnings.push("No bounded Choice, Score, or Noul question was detected.")
+  if (generationTasks.length) warnings.push(`${generationTasks.join(", ")} still requires a generative model.`)
   if (questions.some(question => question.type === "score")) warnings.push("Review the generated Score rubric; Jev scores ordered criteria, not an arbitrary 0-to-1 range.")
-  return { suitability: questions.length >= 2 ? "strong" : questions.length ? "partial" : "not_a_fit", questions, warnings }
+  return {
+    compatibility,
+    suitability: questions.length >= 2 ? "strong" : questions.length ? "partial" : "not_a_fit",
+    questions,
+    generationTasks,
+    warnings
+  }
 }
 
 const quote = value => JSON.stringify(value)
 
 export function exportJavaScript(analysis) {
+  if (!analysis.questions.length) return "// Not convertible: no bounded Jev decision was detected.\n// Keep this task in a generative model."
   const questions = analysis.questions.map(question => {
     let value
     if (question.type === "choice") {
@@ -98,6 +124,7 @@ function pythonLiteral(value) {
 }
 
 export function exportPython(analysis) {
+  if (!analysis.questions.length) return "# Not convertible: no bounded Jev decision was detected.\n# Keep this task in a generative model."
   const questions = analysis.questions.map(question => {
     const className = question.type[0].toUpperCase() + question.type.slice(1)
     const args = [`instructions=${quote(question.instructions)}`]
@@ -107,6 +134,39 @@ export function exportPython(analysis) {
   return `from typesafe_sdk import Choice, Noul, Score, TypeSafeClient\n\nwith TypeSafeClient() as client:\n    response = client.system_one(\n        state={"input": content},\n        questions={\n${questions}\n        },\n    )`
 }
 
+function apiQuestions(analysis) {
+  return Object.fromEntries(analysis.questions.map(question => [question.id, {
+    type: question.type,
+    instructions: question.instructions,
+    ...(question.criteria ? { criteria: question.criteria } : {})
+  }]))
+}
+
+export function exportRuby(analysis) {
+  if (!analysis.questions.length) return "# Not convertible: no bounded Jev decision was detected.\n# Keep this task in a generative model."
+  const questions = JSON.stringify(apiQuestions(analysis), null, 2)
+  return `require "json"\nrequire "net/http"\n\nuri = URI("https://api.typesafe.ai/v1/systemone")\nrequest = Net::HTTP::Post.new(uri)\nrequest["Authorization"] = "Bearer #{ENV.fetch("TYPESAFE_API_KEY")}"\nrequest["Content-Type"] = "application/json"\nrequest.body = JSON.generate(\n  state: { input: content },\n  model: "jev-latest",\n  questions: ${questions}\n)\n\nresponse = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(request) }\nresult = JSON.parse(response.body)`
+}
+
+export function exportGo(analysis) {
+  if (!analysis.questions.length) return "// Not convertible: no bounded Jev decision was detected.\n// Keep this task in a generative model."
+  const questions = JSON.stringify(JSON.stringify(apiQuestions(analysis)))
+  return `package main\n\nimport (\n  "bytes"\n  "encoding/json"\n  "net/http"\n  "os"\n)\n\nfunc evaluate(content string) (*http.Response, error) {\n  var questions map[string]any\n  json.Unmarshal([]byte(${questions}), &questions)\n\n  body, _ := json.Marshal(map[string]any{\n    "state": map[string]string{"input": content},\n    "model": "jev-latest",\n    "questions": questions,\n  })\n  request, _ := http.NewRequest("POST", "https://api.typesafe.ai/v1/systemone", bytes.NewReader(body))\n  request.Header.Set("Authorization", "Bearer "+os.Getenv("TYPESAFE_API_KEY"))\n  request.Header.Set("Content-Type", "application/json")\n  return http.DefaultClient.Do(request)\n}`
+}
+
+export function exportCurl(analysis) {
+  if (!analysis.questions.length) return "# Not convertible: no bounded Jev decision was detected.\n# Keep this task in a generative model."
+  const payload = JSON.stringify({ state: { input: "REPLACE_WITH_CONTENT" }, model: "jev-latest", questions: apiQuestions(analysis) }, null, 2)
+  return `curl -X POST https://api.typesafe.ai/v1/systemone \\\n+  -H "Authorization: Bearer $TYPESAFE_API_KEY" \\\n+  -H "Content-Type: application/json" \\\n+  --data-binary @- <<'JSON'\n${payload}\nJSON`
+}
+
 export function exportAll(analysis) {
-  return { javascript: exportJavaScript(analysis), python: exportPython(analysis), json: JSON.stringify(analysis, null, 2) }
+  return {
+    javascript: exportJavaScript(analysis),
+    python: exportPython(analysis),
+    ruby: exportRuby(analysis),
+    go: exportGo(analysis),
+    curl: exportCurl(analysis),
+    json: JSON.stringify(analysis, null, 2)
+  }
 }

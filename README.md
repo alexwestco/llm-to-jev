@@ -6,6 +6,8 @@
 
 LLMtoJev finds bounded decisions inside prompts written for GPT, Claude, or Gemini and exports equivalent Jev `Choice`, `Score`, and `Noul` questions. It is designed for classification, scoring, routing, and yes/no judgments that do not require generated prose.
 
+Each prompt is marked as fully convertible, partially convertible, or not convertible. For mixed prompts, the converter separates Jev-compatible decisions from writing, summarization, translation, and other generative work that must remain with an LLM.
+
 ## Example
 
 **Input**
@@ -20,6 +22,7 @@ Score its urgency from 0 to 1, and decide whether it needs human review.
 ```json
 {
   "suitability": "strong",
+  "compatibility": "full",
   "questions": [
     { "id": "category", "type": "choice" },
     { "id": "urgency", "type": "score" },
@@ -71,6 +74,9 @@ Everything runs locally in the browser. There is no framework, database, account
 
 - JavaScript/TypeScript using `@typesafe-ai/sdk`
 - Python using `typesafe-sdk`
+- Ruby using the HTTP API
+- Go using the HTTP API
+- cURL using the HTTP API
 - JSON for language-neutral integrations
 
 ## Limitations
